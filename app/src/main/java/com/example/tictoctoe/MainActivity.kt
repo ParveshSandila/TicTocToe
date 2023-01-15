@@ -1,5 +1,7 @@
 package com.example.tictoctoe
 
+import android.content.Context
+import android.media.AudioManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush.Companion.linearGradient
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,6 +58,10 @@ fun Board(
     val currentPlayer = boardVM.currentPlayer.collectAsState().value
     val list = boardVM.list.collectAsState().value
     val winnerPlayer = boardVM.winnerPlayer.collectAsState().value
+    val isGameFinish = boardVM.isGameFinsh.collectAsState().value
+
+    val context = LocalContext.current
+    val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 
     Column(
         modifier = modifier
@@ -93,7 +100,10 @@ fun Board(
                 ClickableBox(
                     data = item,
                     onclick = { modelBox ->
-                        boardVM.onItemClick(modelBox)
+                        boardVM.onItemClick(modelBox){ isValidClick ->
+                            val soundEffect = if(isValidClick) AudioManager.FX_KEY_CLICK else AudioManager.FX_KEYPRESS_INVALID
+                            audioManager.playSoundEffect(soundEffect,1.0f)
+                        }
                     }
                 )
             }
@@ -106,7 +116,7 @@ fun Board(
         )
     }
 
-    if(winnerPlayer != null){
+    if(isGameFinish){
         Popup(
             properties = PopupProperties(
                 dismissOnClickOutside = false,
@@ -133,14 +143,23 @@ fun Board(
 
                 Spacer(modifier = Modifier.height(15.dp))
 
-                Text(
-                    color = Color(0xFFE6E6E6),
-                    text = "Winner Player: ${winnerPlayer.name}",
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold
-                )
+                winnerPlayer?.name.let { winnerPlayerName ->
+                    val textToShow = if(winnerPlayerName != null){
+                        "Winner Player: $winnerPlayerName"
+                    }else{
+                        "Game Finish without any winner"
+                    }
 
-                Spacer(modifier = Modifier.height(15.dp))
+                    Text(
+                        color = Color(0xFFE6E6E6),
+                        text = textToShow,
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Spacer(modifier = Modifier.height(15.dp))
+
+                }
 
                 Button(
                     modifier = Modifier,

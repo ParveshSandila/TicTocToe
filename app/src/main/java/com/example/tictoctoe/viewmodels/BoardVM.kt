@@ -19,6 +19,9 @@ class BoardVM @Inject constructor(
     private val _winnerPlayer : MutableStateFlow<Player?> = MutableStateFlow(null)
     val winnerPlayer = _winnerPlayer.asStateFlow()
 
+    private val _isGameFinish : MutableStateFlow<Boolean> = MutableStateFlow(false)
+    val isGameFinsh = _isGameFinish.asStateFlow()
+
     private val _list : MutableStateFlow<List<BoxData>> = MutableStateFlow(emptyList())
     val list = _list.asStateFlow()
 
@@ -39,18 +42,21 @@ class BoardVM @Inject constructor(
         resetBoard()
     }
 
-    fun onItemClick(modelBox:BoxData){
+    fun onItemClick(modelBox:BoxData,isValidClick:(flag:Boolean)-> Unit){
         viewModelScope.launch {
             if(modelBox.boxStatus.value == BoxStatus.IDLE && _winnerPlayer.value == null){
+                isValidClick(true)
                 modelBox.boxStatus.value = BoxStatus.FILLED
                 modelBox.clickedBy.value = currentPlayer.value
-                checkForWinner()
+                checkStateOfGame()
                 _currentPlayer.value = if(_currentPlayer.value == Player.Player1) Player.Player2 else Player.Player1
+            }else{
+                isValidClick(false)
             }
         }
     }
 
-    private suspend fun checkForWinner(){
+    private suspend fun checkStateOfGame(){
         val filledBox = _list.value.filter { it.boxStatus.value == BoxStatus.FILLED }
         if(filledBox.size >= 5){
             combinationToWin.forEach { combination ->
@@ -61,10 +67,13 @@ class BoardVM @Inject constructor(
                             it.boxStatus.value = BoxStatus.SPECIAL
                         }
                         _winnerPlayer.emit(_currentPlayer.value)
-                        return@forEach
+                        _isGameFinish.emit(true)
+                        return
                     }
                 }
             }
+
+            _isGameFinish.emit(filledBox.size == _list.value.size)
         }
     }
 
@@ -92,6 +101,7 @@ class BoardVM @Inject constructor(
         viewModelScope.launch {
             _winnerPlayer.emit(null)
             _currentPlayer.emit(Player.Player1)
+            _isGameFinish.emit(false)
         }
 
     }
